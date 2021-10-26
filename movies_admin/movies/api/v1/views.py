@@ -4,12 +4,15 @@ from django.http import JsonResponse
 from django.views.generic.list import BaseListView 
 from django.views.generic.detail import BaseDetailView
 
-from movies.models import Filmwork
+from movies.models import Filmwork, PersonRole
 
 
 class MoviesApiMixin:
     model = Filmwork
     http_method_names = ['get']
+
+    def _aggregate_person(self, role):
+        return ArrayAgg('persons__full_name', distinct=True, filter=Q(personfilmwork__role=role))
 
     def get_queryset(self):
         return Filmwork.objects.prefetch_related('genres', 'persons').values().annotate(
@@ -18,23 +21,11 @@ class MoviesApiMixin:
                 distinct=True
                 )
             ).annotate(
-                actors=ArrayAgg(
-                    'persons__full_name', 
-                    filter=Q(persons__personfilmwork__role='actor'), 
-                    distinct=True
-                    )
+                actors=self._aggregate_person(PersonRole.ACTOR)
                 ).annotate(
-                    directors=ArrayAgg(
-                        'persons__full_name', 
-                        filter=Q(persons__personfilmwork__role='director'), 
-                        distinct=True
-                        )
+                    directors=self._aggregate_person(PersonRole.DIRECTOR)
                     ).annotate(
-                        writers=ArrayAgg(
-                            'persons__full_name', 
-                            filter=Q(persons__personfilmwork__role='writer'), 
-                            distinct=True
-                            )
+                        writers=self._aggregate_person(PersonRole.WRITER)
                         )
 
     def render_to_response(self, context, **response_kwargs):
