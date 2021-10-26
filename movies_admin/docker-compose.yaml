@@ -4,9 +4,9 @@ services:
   db:
     build:
       context: ./docker/postgres
-      dockerfile: Dockerfile
     volumes:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - dbdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment:
@@ -17,7 +17,6 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
     volumes:
       - ./:/user/src/app
     env_file:
@@ -29,14 +28,18 @@ services:
     depends_on:
       - db
 
-  # nginx:
-  #   build:
-  #     context: ./docker/nginx
-  #     dockerfile: Dockerfile
-  #   depends_on:
-  #     - web
-  #     - db
-  #   ports:
-  #     - "80:80" 
-  #   volumes:
-  #     - ./static/:/static
+  nginx:
+    build:
+      context: ./docker/nginx
+    depends_on:
+      - web
+      - db
+    ports:
+      - "80:80" 
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/configs:/etc/nginx/conf.d:ro
+      - ./static/:/config/static
+
+volumes:
+  dbdata:
